@@ -4,6 +4,8 @@ import {
   getPacientes,
   createPaciente,
   createRegistrationInvite,
+  getRegistrationReviews,
+  reviewRegistration,
   mapPaciente,
   pacienteFormToAPI,
 } from '../../services/api'
@@ -15,6 +17,11 @@ const OBRAS_SOCIALES = ['Galeno', 'Swiss Medical', 'Sancor Salud', 'Medifé', 'P
 
 const FORM_INICIAL = {
   nombre: '', dni: '', fechaNacimiento: '', obraSocial: 'Particular', telefono: '', email: ''
+}
+
+const REVIEW_FORM_INICIAL = {
+  firstName: '', lastName: '', dni: '', birthDate: '', phone: '', email: '',
+  coverageType: 'private', obraSocial: '', insurancePlan: '', memberNumber: '',
 }
 
 const soloNumeros = (valor) => valor.replace(/\D/g, '')
@@ -75,6 +82,11 @@ export default function Pacientes() {
   const [generatingInvite, setGeneratingInvite] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [pendingReviews, setPendingReviews] = useState([])
+  const [selectedReview, setSelectedReview] = useState(null)
+  const [reviewForm, setReviewForm] = useState(REVIEW_FORM_INICIAL)
+  const [reviewErrors, setReviewErrors] = useState({})
+  const [reviewSaving, setReviewSaving] = useState(false)
   const navigate = useNavigate()
 
   const fetchPacientes = async () => {
@@ -87,20 +99,38 @@ export default function Pacientes() {
     setLoading(false)
   }
 
+  const fetchPendingReviews = async () => {
+    try {
+      const data = await getRegistrationReviews()
+      setPendingReviews(data)
+    } catch {
+      setPendingReviews([])
+    }
+  }
+
   useEffect(() => {
     let active = true
-    getPacientes()
-      .then(data => {
+    Promise.all([getPacientes(), getRegistrationReviews()])
+      .then(([patientsData, reviewsData]) => {
         if (!active) return
-        setPacientes(data.map(mapPaciente))
+        setPacientes(patientsData.map(mapPaciente))
+        setPendingReviews(reviewsData)
         setLoading(false)
       })
       .catch(() => {
         if (!active) return
         setPacientes([])
+        setPendingReviews([])
         setLoading(false)
       })
-    return () => { active = false }
+    const refreshOnFocus = () => { fetchPendingReviews() }
+    window.addEventListener('focus', refreshOnFocus)
+    const refreshTimer = window.setInterval(refreshOnFocus, 30000)
+    return () => {
+      active = false
+      window.removeEventListener('focus', refreshOnFocus)
+      window.clearInterval(refreshTimer)
+    }
   }, [])
 
   const filtered = pacientes.filter(p =>
@@ -169,6 +199,44 @@ export default function Pacientes() {
     }
   }
 
+  const abrirRevision = (submission) => {
+    setSelectedReview(submission)
+    setReviewErrors({})
+    setReviewForm({
+      firstName: submission.firstName || '',
+      lastName: submission.lastName || '',
+      dni: submission.dni || '',
+      birthDate: submission.birthDate?.split('T')[0] || '',
+      phone: submission.phone || '',
+      email: submission.email || '',
+      coverageType: submission.coverageType || 'private',
+      obraSocial: submission.obraSocial || '',
+      insurancePlan: submission.insurancePlan || '',
+      memberNumber: submission.memberNumber || '',
+    })
+  }
+
+  const reviewCampo = (key, value) => {
+    setReviewForm(current => ({ ...current, [key]: value }))
+    if (reviewErrors[key]) setReviewErrors(current => ({ ...current, [key]: undefined }))
+  }
+
+  const aprobarRegistro = async (crearTurno = false) => {
+    setReviewSaving(true)
+    setReviewErrors({})
+    try {
+      const patient = await reviewRegistration(selectedReview.id, reviewForm)
+      setSelectedReview(null)
+      await Promise.all([fetchPacientes(), fetchPendingReviews()])
+      window.dispatchEvent(new Event('registration-reviews-updated'))
+      if (crearTurno) navigate(`/dashboard/agenda?nuevo=1&patientId=${patient.id}`)
+    } catch (error) {
+      setReviewErrors(error.data?.errors || { submit: error.message })
+    } finally {
+      setReviewSaving(false)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -199,6 +267,38 @@ export default function Pacientes() {
           </button>
         </div>
       </div>
+
+      {pendingReviews.length > 0 && (
+        <section className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm" aria-live="polite">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 font-bold">
+                {pendingReviews.length}
+              </span>
+              <div>
+                <h2 className="font-semibold text-amber-950">Pacientes pendientes de revisión</h2>
+                <p className="text-sm text-amber-800/70">Revisá los datos antes de incorporarlos a la lista de pacientes.</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {pendingReviews.map(submission => (
+              <button
+                key={submission.id}
+                type="button"
+                onClick={() => abrirRevision(submission)}
+                className="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-white px-4 py-3 text-left hover:border-amber-300 hover:shadow-sm transition"
+              >
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm text-gray-800">{submission.firstName} {submission.lastName}</strong>
+                  <small className="text-gray-400">Recibido {new Date(submission.createdAt).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</small>
+                </span>
+                <span className="text-xs font-semibold text-[#B00000]">Revisar →</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Search */}
       <div className="relative mb-6">
@@ -238,6 +338,79 @@ export default function Pacientes() {
               onClick={() => navigate(`/dashboard/pacientes/${p.id}`)}
             />
           ))}
+        </div>
+      )}
+
+      {selectedReview && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-600 mb-1">Pendiente de revisión</p>
+                <h2 className="font-bold text-gray-800 text-xl">Verificar datos del paciente</h2>
+                <p className="text-sm text-gray-400 mt-1">Podés corregir la información antes de guardarla.</p>
+              </div>
+              <button type="button" onClick={() => setSelectedReview(null)} className="text-gray-400 hover:text-gray-700 text-xl" aria-label="Cerrar">×</button>
+            </div>
+
+            {selectedReview.status === 'duplicate_review' && (
+              <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+                El DNI coincide con un paciente existente. Revisalo antes de aprobar para evitar duplicados.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Campo label="Nombre *" error={reviewErrors.firstName}>
+                <input value={reviewForm.firstName} onChange={e => reviewCampo('firstName', e.target.value)} className={inputClass(reviewErrors.firstName)} />
+              </Campo>
+              <Campo label="Apellido *" error={reviewErrors.lastName}>
+                <input value={reviewForm.lastName} onChange={e => reviewCampo('lastName', e.target.value)} className={inputClass(reviewErrors.lastName)} />
+              </Campo>
+              <Campo label="DNI *" error={reviewErrors.dni}>
+                <input inputMode="numeric" value={reviewForm.dni} onChange={e => reviewCampo('dni', soloNumeros(e.target.value))} className={inputClass(reviewErrors.dni)} />
+              </Campo>
+              <Campo label="Fecha de nacimiento *" error={reviewErrors.birthDate}>
+                <input type="date" value={reviewForm.birthDate} onChange={e => reviewCampo('birthDate', e.target.value)} className={inputClass(reviewErrors.birthDate)} />
+              </Campo>
+              <Campo label="Teléfono *" error={reviewErrors.phone}>
+                <input type="tel" value={reviewForm.phone} onChange={e => reviewCampo('phone', e.target.value)} className={inputClass(reviewErrors.phone)} />
+              </Campo>
+              <Campo label="Correo electrónico" error={reviewErrors.email}>
+                <input type="email" value={reviewForm.email} onChange={e => reviewCampo('email', e.target.value)} className={inputClass(reviewErrors.email)} />
+              </Campo>
+              <Campo label="Tipo de atención" error={reviewErrors.coverageType}>
+                <select value={reviewForm.coverageType} onChange={e => reviewCampo('coverageType', e.target.value)} className="input">
+                  <option value="private">Particular</option>
+                  <option value="insurance">Obra social</option>
+                </select>
+              </Campo>
+              {reviewForm.coverageType === 'insurance' && (
+                <>
+                  <Campo label="Obra social *" error={reviewErrors.obraSocial}>
+                    <input value={reviewForm.obraSocial} onChange={e => reviewCampo('obraSocial', e.target.value)} className={inputClass(reviewErrors.obraSocial)} />
+                  </Campo>
+                  <Campo label="Plan">
+                    <input value={reviewForm.insurancePlan} onChange={e => reviewCampo('insurancePlan', e.target.value)} className="input" />
+                  </Campo>
+                  <Campo label="Número de afiliado *" error={reviewErrors.memberNumber}>
+                    <input value={reviewForm.memberNumber} onChange={e => reviewCampo('memberNumber', e.target.value)} className={inputClass(reviewErrors.memberNumber)} />
+                  </Campo>
+                </>
+              )}
+            </div>
+
+            {reviewErrors.submit && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{reviewErrors.submit}</p>}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
+              <button type="button" onClick={() => setSelectedReview(null)} className="sm:w-1/3 border border-gray-200 text-gray-500 rounded-xl py-2.5 text-sm hover:bg-gray-50">Cancelar</button>
+              <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(false)} className="sm:flex-1 border border-red-200 text-[#B00000] rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 disabled:opacity-50">
+                {reviewSaving ? 'Guardando…' : 'Aprobar y guardar'}
+              </button>
+              <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(true)} className="sm:flex-1 bg-[#B00000] text-white rounded-xl py-2.5 text-sm font-medium hover:bg-[#900000] disabled:opacity-50">
+                {reviewSaving ? 'Guardando…' : 'Aprobar y crear turno'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getPacientes, getTurnosByRango, createTurno, updateTurnoEstado, mapPaciente, mapTurno } from '../../services/api'
 
 const DURACIONES = [15, 30, 45, 60, 90]
@@ -21,6 +22,7 @@ const getLunes = (date = new Date()) => {
 const toStr = (date) => date.toISOString().split('T')[0]
 
 export default function Agenda() {
+  const [searchParams] = useSearchParams()
   const [lunes, setLunes] = useState(getLunes())
   const [turnos, setTurnos] = useState([])
   const [pacientes, setPacientes] = useState([])
@@ -29,6 +31,8 @@ export default function Agenda() {
   const [form, setForm] = useState(FORM_INICIAL)
   const [saving, setSaving] = useState(false)
   const [turnoActivo, setTurnoActivo] = useState(null)
+  const requestedPatientId = searchParams.get('patientId')
+  const shouldOpenNew = searchParams.get('nuevo') === '1'
 
   const hoyStr = toStr(new Date())
   const dias = Array.from({ length: 6 }, (_, i) => {
@@ -55,11 +59,42 @@ export default function Agenda() {
 
   useEffect(() => {
     getPacientes()
-      .then(data => setPacientes(data.map(mapPaciente)))
+      .then(data => {
+        const mapped = data.map(mapPaciente)
+        setPacientes(mapped)
+        if (shouldOpenNew && requestedPatientId) {
+          const patient = mapped.find(item => String(item.id) === requestedPatientId)
+          if (patient) {
+            setForm({
+              ...FORM_INICIAL,
+              pacienteId: String(patient.id),
+              pacienteNombre: patient.nombre,
+              fecha: toStr(new Date()),
+            })
+            setShowForm(true)
+          }
+        }
+      })
       .catch(() => setPacientes([]))
-  }, [])
+  }, [requestedPatientId, shouldOpenNew])
 
-  useEffect(() => { fetchTurnos() }, [lunes])
+  useEffect(() => {
+    let active = true
+    getTurnosByRango(lunesStr, sabadoStr)
+      .then(data => {
+        if (!active) return
+        setTurnos(data
+          .map(mapTurno)
+          .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora)))
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!active) return
+        setTurnos([])
+        setLoading(false)
+      })
+    return () => { active = false }
+  }, [lunesStr, sabadoStr])
 
   const campo = (key, value) => setForm(f => ({ ...f, [key]: value }))
 
@@ -115,6 +150,7 @@ export default function Agenda() {
   }
 
   const navSemana = (dir) => {
+    setLoading(true)
     const d = new Date(lunes)
     d.setDate(d.getDate() + dir * 7)
     setLunes(d)

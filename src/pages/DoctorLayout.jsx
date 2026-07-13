@@ -2,6 +2,8 @@ import { signOut } from 'firebase/auth'
 import { auth } from '../firebase/config'
 import { useAuth } from '../context/AuthContext'
 import { Outlet, NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { getRegistrationReviews } from '../services/api'
 import {
   IconActivity, IconGrid, IconUsers, IconCalendar, IconLogOut,
 } from '../components/Icons'
@@ -14,6 +16,26 @@ const NAV_ITEMS = [
 
 export default function DoctorLayout() {
   const { user } = useAuth()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    const refresh = () => {
+      getRegistrationReviews()
+        .then(items => { if (active) setPendingCount(items.length) })
+        .catch(() => {})
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    window.addEventListener('registration-reviews-updated', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => {
+      active = false
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('registration-reviews-updated', refresh)
+      window.clearInterval(timer)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -50,6 +72,11 @@ export default function DoctorLayout() {
             >
               <Icon className="w-4 h-4" />
               {label}
+              {label === 'Pacientes' && pendingCount > 0 && (
+                <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center">
+                  {pendingCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

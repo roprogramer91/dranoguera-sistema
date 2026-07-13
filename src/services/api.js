@@ -97,8 +97,11 @@ export const revokeRegistrationInvite = (id) =>
 
 export const getRegistrationReviews = () => authRequest('/registration-reviews')
 
-export const reviewRegistration = (patientId) =>
-  authRequest(`/registration-reviews/${patientId}/review`, { method: 'PATCH' })
+export const reviewRegistration = (submissionId, data) =>
+  authRequest(`/registration-reviews/${submissionId}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
 
 // ─── Mappers API → shape del dashboard ───────────────────────────────────────
 

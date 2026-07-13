@@ -159,11 +159,11 @@ export default function RegistroPaciente() {
         <section className="registration-card registration-message-card success-card">
           <div className="success-icon" aria-hidden="true">✓</div>
           <p className="eyebrow">Registro recibido</p>
-          <h1>Gracias, {result.patient.name.split(' ')[0]}</h1>
+          <h1>Gracias, {result.registration.name.split(' ')[0]}</h1>
           <div className="patient-summary">
             <span>Paciente</span>
-            <strong>{result.patient.name}</strong>
-            <small>{result.patient.coverageType === 'insurance' ? 'Con obra social' : 'Atención particular'}</small>
+            <strong>{result.registration.name}</strong>
+            <small>{result.registration.coverageType === 'insurance' ? 'Con obra social' : 'Atención particular'}</small>
           </div>
           <p>{result.message}</p>
         </section>
