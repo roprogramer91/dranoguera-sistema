@@ -10,7 +10,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** publicar en `dev` la parametrización del dashboard, configurar `VITE_API_URL` con el dominio del backend de desarrollo y conectar `dranoguera-sistema/development` a esa rama. El commit/push requiere completar `gh auth login` en este equipo.
+**Próximo paso recomendado:** crear `feature/registro-pacientes-link` desde `dev` y cerrar las decisiones pendientes sobre campos, duplicados y autenticación administrativa antes de modificar el esquema.
 
 ## Checklist
 
@@ -27,13 +27,13 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [ ] Crear `feature/registro-pacientes-link` desde `dev` para implementar.
 - [x] Crear `development` en `BK-MiConsultorio-adri2026` y retirar sus builds automáticos.
 - [x] Vincular `MiConsultorioAdri/development` a la rama `dev`.
-- [ ] Vincular `dranoguera-sistema/development` a la rama `dev` después de parametrizar la API.
+- [x] Vincular `dranoguera-sistema/development` a la rama `dev` después de parametrizar la API.
 - [x] Crear un PostgreSQL nuevo dentro del ambiente `development`.
 - [x] Reemplazar y verificar `DATABASE_URL` antes del primer despliegue.
 - [x] Generar dominio Railway exclusivo para la API de desarrollo.
-- [ ] Generar dominio Railway exclusivo para el dashboard de desarrollo.
+- [x] Generar dominio Railway exclusivo para el dashboard de desarrollo.
 - [x] Parametrizar el dashboard para leer la API desde `VITE_API_URL` con fallback productivo.
-- [ ] Configurar las apps desplegadas de desarrollo para utilizar la API de staging.
+- [x] Configurar el dashboard desplegado en desarrollo para utilizar la API de staging.
 - [ ] Crear una APK `MiConsultorio Dev` que pueda coexistir con producción.
 - [x] Definir el objetivo y el flujo general.
 - [x] Definir vigencia del enlace en 30 minutos.
@@ -151,17 +151,18 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - Para ejecutar las migraciones desde local se utilizó temporalmente el proxy público del mismo Postgres; al terminar se restauró y verificó la referencia privada.
 - Se generó `https://miconsultorioadri-development.up.railway.app` para la API de desarrollo y se verificó que `/patients` responde con cero registros.
 - El dashboard quedó parametrizado para usar `VITE_API_URL`, manteniendo la URL productiva únicamente como fallback compatible.
-- `VITE_API_URL` quedó configurada en Railway development sin desplegar el dashboard.
+- `VITE_API_URL` quedó configurada en Railway development para apuntar a la API de staging.
 - `npm run build` finalizó correctamente. `npm run lint` continúa fallando por problemas preexistentes en `AuthContext.jsx`, `Agenda.jsx` y `Pacientes.jsx`, ajenos a esta parametrización.
-- La publicación local a `dev` quedó pendiente porque GitHub CLI todavía requiere `gh auth login`.
-- No se modificó código funcional ni se realizaron cambios en el backend o en la base de datos.
+- GitHub CLI quedó autenticado como `roprogramer91`; los cambios se publicaron en `dev` mediante el commit `66cd10c`.
+- `dranoguera-sistema/development` quedó conectado a `roprogramer91/dranoguera-sistema:dev`.
+- Se generó `https://dranoguera-sistema-development.up.railway.app` para el dashboard de desarrollo.
+- El despliegue del dashboard finalizó en `SUCCESS`, arrancó con `serve -s dist -l $PORT` y la URL pública respondió HTTP 200.
+- Todavía no se implementó código funcional del registro de pacientes; los cambios realizados corresponden a aislamiento y configuración del entorno de desarrollo.
 
 ## Bloqueos o dependencias actuales
 
 - El backend vive en otro repositorio, por lo que la implementación requerirá cambios coordinados en ambos proyectos.
-- No existe todavía una rama `dev` remota ni se confirmó un servicio/base de staging; crearlos es el primer paso antes de modificar código o ejecutar migraciones.
 - Antes de proteger pacientes y turnos hay que incorporar una identidad verificable en la app móvil y adaptar el dashboard web para enviar tokens en esas operaciones.
-- El endpoint base está escrito directamente en `src/services/api.js`; antes de desplegar ambientes de prueba conviene moverlo a una variable de entorno.
 - Las notificaciones push requieren configuración adicional y permiso del dispositivo; el contador interno debe funcionar aunque ese permiso sea rechazado.
 
 ## Notas para la próxima sesión
