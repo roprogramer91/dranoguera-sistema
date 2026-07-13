@@ -1,5 +1,10 @@
 # React + Vite
 
+## Documentación funcional
+
+- [Roadmap de registro de pacientes mediante enlace temporal](./docs/registro-pacientes-roadmap.md)
+- [Progreso de implementación](./docs/registro-pacientes-progreso.md)
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

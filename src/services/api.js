@@ -1,6 +1,7 @@
 import { auth } from '../firebase/config'
 
-const BASE = 'https://miconsultorio-production.up.railway.app'
+const DEFAULT_API_URL = 'https://miconsultorio-production.up.railway.app'
+const BASE = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/+$/, '')
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 async function request(path, options = {}) {
