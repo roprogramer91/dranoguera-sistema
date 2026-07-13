@@ -6,11 +6,11 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 ## Estado general
 
-**Etapa actual:** primera implementación de backend, formulario público y generador terminada en rama de funcionalidad; integración en development pendiente.
+**Etapa actual:** primera implementación desplegada en Railway development; prueba integral autenticada pendiente.
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** desplegar ambas ramas `feature/registro-pacientes-link` en Railway development y ejecutar una prueba integral con datos ficticios antes de agregar la bandeja de revisión.
+**Próximo paso recomendado:** ingresar al dashboard de development, generar un enlace con una sesión Firebase válida y completar el formulario con datos ficticios para verificar la bandeja pendiente.
 
 ## Checklist
 
@@ -161,9 +161,12 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - En `MiConsultorio` se implementaron invitaciones con token aleatorio, hash SHA-256, vencimiento de 30 minutos, revocación y consumo atómico de un solo uso.
 - Se amplió `Patient` con cobertura, origen y estado de revisión; la migración `20260713153000_add_registration_invites` fue aplicada únicamente al PostgreSQL de development.
 - El backend incorpora registro público validado, detección inicial de DNI duplicado, bandeja protegida de pendientes y rate limiting.
-- El backend fue publicado en la rama de funcionalidad mediante el commit `55cc41a`; Railway todavía permanece conectado a `dev`.
+- El backend fue publicado en la rama de funcionalidad mediante el commit `55cc41a` y desplegado correctamente en Railway development.
 - En el dashboard se agregó `/registro/:token`, formulario condicional mobile-first, estados del enlace, confirmación y generador de enlaces desde Pacientes.
 - El build y el lint específico de los archivos modificados del dashboard finalizaron correctamente.
+- El dashboard fue publicado mediante el commit `39ee30d` y desplegado correctamente en Railway development.
+- Se verificó que la ruta pública desplegada responde HTTP 200, que un token inválido devuelve `unavailable` y que el generador administrativo sin token Firebase responde 401.
+- La prueba automática con escritura ficticia no se ejecutó porque habría requerido cambiar temporalmente `DATABASE_URL` al proxy público; se preservó la conexión privada y la prueba queda para el flujo autenticado real.
 
 ## Bloqueos o dependencias actuales
 
