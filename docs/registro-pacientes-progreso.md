@@ -6,11 +6,11 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 ## Estado general
 
-**Etapa actual:** definición funcional terminada; implementación no iniciada.
+**Etapa actual:** primera implementación de backend, formulario público y generador terminada en rama de funcionalidad; integración en development pendiente.
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** crear `feature/registro-pacientes-link` desde `dev` y cerrar las decisiones pendientes sobre campos, duplicados y autenticación administrativa antes de modificar el esquema.
+**Próximo paso recomendado:** desplegar ambas ramas `feature/registro-pacientes-link` en Railway development y ejecutar una prueba integral con datos ficticios antes de agregar la bandeja de revisión.
 
 ## Checklist
 
@@ -24,7 +24,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [x] Definir la topología de desarrollo recomendada para Railway y la APK.
 - [x] Crear la rama `dev` desde el `main` actual en `MiConsultorio`.
 - [x] Crear la rama `dev` desde el `main` actual en `dranoguera-sistema`.
-- [ ] Crear `feature/registro-pacientes-link` desde `dev` para implementar.
+- [x] Crear `feature/registro-pacientes-link` desde `dev` para implementar.
 - [x] Crear `development` en `BK-MiConsultorio-adri2026` y retirar sus builds automáticos.
 - [x] Vincular `MiConsultorioAdri/development` a la rama `dev`.
 - [x] Vincular `dranoguera-sistema/development` a la rama `dev` después de parametrizar la API.
@@ -49,9 +49,9 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [x] Identificar la app móvil y descartar el frontend web antiguo como objetivo de implementación.
 - [x] Auditar el estado actual de autenticación de las rutas involucradas.
 - [ ] Definir la autenticación administrativa para móvil, web y backend.
-- [ ] Confirmar campos obligatorios y opcionales.
-- [ ] Decidir nombre completo versus nombre y apellido separados.
-- [ ] Definir el procedimiento exacto para resolver duplicados.
+- [x] Definir para la primera versión DNI, fecha de nacimiento y teléfono obligatorios; correo y plan opcionales.
+- [x] Mantener `name` por compatibilidad y recibir nombre/apellido separados en el formulario público.
+- [x] Marcar coincidencias de DNI como `duplicate_review` sin revelar datos existentes al paciente.
 - [ ] Aprobar textos de consentimiento y mensajes al paciente.
 
 ### Backend y base de datos
@@ -60,37 +60,37 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [ ] Incorporar autenticación remota en la app móvil.
 - [ ] Hacer que el dashboard web autentique las operaciones de pacientes y turnos.
 - [ ] Proteger las rutas administrativas existentes en el backend.
-- [ ] Diseñar y crear la entidad de invitaciones.
-- [ ] Ampliar el modelo de paciente.
-- [ ] Implementar endpoint autenticado para generar enlaces.
-- [ ] Implementar listado y revocación de invitaciones.
-- [ ] Implementar validación pública del token.
-- [ ] Implementar alta pública transaccional.
-- [ ] Implementar vencimiento a los 30 minutos según hora del servidor.
-- [ ] Implementar consumo de un solo uso.
-- [ ] Implementar normalización y detección de duplicados.
-- [ ] Implementar endpoints de registros pendientes y revisión.
+- [x] Diseñar y crear la entidad de invitaciones.
+- [x] Ampliar el modelo de paciente.
+- [x] Implementar endpoint autenticado para generar enlaces.
+- [x] Implementar listado y revocación de invitaciones.
+- [x] Implementar validación pública del token.
+- [x] Implementar alta pública transaccional.
+- [x] Implementar vencimiento a los 30 minutos según hora del servidor.
+- [x] Implementar consumo de un solo uso.
+- [x] Implementar normalización y detección inicial de duplicados por DNI.
+- [x] Implementar endpoints de registros pendientes y revisión.
 - [ ] Incorporar rate limiting y auditoría.
 - [ ] Agregar pruebas automatizadas del backend.
 
 ### Formulario público
 
-- [ ] Agregar la ruta `/registro/:token`.
-- [ ] Crear estados visuales de carga, vencido, usado, revocado e inválido.
-- [ ] Crear el paso de datos personales.
-- [ ] Crear selector Particular / Obra social.
-- [ ] Crear el paso condicional de cobertura.
-- [ ] Implementar validaciones y normalización en el cliente.
-- [ ] Implementar transición lateral y conservación de datos al volver.
-- [ ] Implementar prevención de doble envío.
-- [ ] Integrar el formulario con la API pública.
-- [ ] Crear la tarjeta de confirmación.
+- [x] Agregar la ruta `/registro/:token`.
+- [x] Crear estados visuales de carga, vencido, usado, revocado e inválido.
+- [x] Crear el paso de datos personales.
+- [x] Crear selector Particular / Obra social.
+- [x] Crear el paso condicional de cobertura.
+- [x] Implementar validaciones y normalización en el cliente.
+- [x] Implementar transición lateral y conservación de datos al volver.
+- [x] Implementar prevención de doble envío.
+- [x] Integrar el formulario con la API pública.
+- [x] Crear la tarjeta de confirmación.
 - [ ] Revisar experiencia móvil y accesibilidad.
 
 ### Aplicación de Adriana
 
-- [ ] Agregar métodos de invitaciones y revisión a `src/services/api.js`.
-- [ ] Agregar botón Generar enlace de registro.
+- [x] Agregar métodos de invitaciones y revisión a `src/services/api.js`.
+- [x] Agregar botón Generar enlace de registro.
 - [ ] Crear interfaz para copiar, consultar y revocar enlaces.
 - [ ] Crear contador persistente de registros pendientes.
 - [ ] Crear listado o bandeja de pendientes.
@@ -157,7 +157,13 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - `dranoguera-sistema/development` quedó conectado a `roprogramer91/dranoguera-sistema:dev`.
 - Se generó `https://dranoguera-sistema-development.up.railway.app` para el dashboard de desarrollo.
 - El despliegue del dashboard finalizó en `SUCCESS`, arrancó con `serve -s dist -l $PORT` y la URL pública respondió HTTP 200.
-- Todavía no se implementó código funcional del registro de pacientes; los cambios realizados corresponden a aislamiento y configuración del entorno de desarrollo.
+- Se crearon ramas `feature/registro-pacientes-link` desde `dev` en ambos repositorios.
+- En `MiConsultorio` se implementaron invitaciones con token aleatorio, hash SHA-256, vencimiento de 30 minutos, revocación y consumo atómico de un solo uso.
+- Se amplió `Patient` con cobertura, origen y estado de revisión; la migración `20260713153000_add_registration_invites` fue aplicada únicamente al PostgreSQL de development.
+- El backend incorpora registro público validado, detección inicial de DNI duplicado, bandeja protegida de pendientes y rate limiting.
+- El backend fue publicado en la rama de funcionalidad mediante el commit `55cc41a`; Railway todavía permanece conectado a `dev`.
+- En el dashboard se agregó `/registro/:token`, formulario condicional mobile-first, estados del enlace, confirmación y generador de enlaces desde Pacientes.
+- El build y el lint específico de los archivos modificados del dashboard finalizaron correctamente.
 
 ## Bloqueos o dependencias actuales
 

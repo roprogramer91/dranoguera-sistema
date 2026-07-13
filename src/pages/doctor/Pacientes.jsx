@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getPacientes, createPaciente, mapPaciente, pacienteFormToAPI } from '../../services/api'
+import {
+  getPacientes,
+  createPaciente,
+  createRegistrationInvite,
+  mapPaciente,
+  pacienteFormToAPI,
+} from '../../services/api'
 import {
   IconSearch, IconPlus, IconPhone, IconShield, IconChevronDown, IconUsers,
 } from '../../components/Icons'
@@ -64,6 +70,11 @@ export default function Pacientes() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(FORM_INICIAL)
   const [errores, setErrores] = useState({})
+  const [showInvite, setShowInvite] = useState(false)
+  const [invite, setInvite] = useState(null)
+  const [generatingInvite, setGeneratingInvite] = useState(false)
+  const [inviteError, setInviteError] = useState('')
+  const [copied, setCopied] = useState(false)
   const navigate = useNavigate()
 
   const fetchPacientes = async () => {
@@ -76,7 +87,21 @@ export default function Pacientes() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchPacientes() }, [])
+  useEffect(() => {
+    let active = true
+    getPacientes()
+      .then(data => {
+        if (!active) return
+        setPacientes(data.map(mapPaciente))
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!active) return
+        setPacientes([])
+        setLoading(false)
+      })
+    return () => { active = false }
+  }, [])
 
   const filtered = pacientes.filter(p =>
     p.nombre?.toLowerCase().includes(search.toLowerCase()) ||
@@ -112,10 +137,42 @@ export default function Pacientes() {
     setErrores({})
   }
 
+  const generarEnlace = async () => {
+    setGeneratingInvite(true)
+    setInviteError('')
+    setCopied(false)
+    try {
+      const data = await createRegistrationInvite()
+      setInvite({
+        ...data,
+        registrationUrl: data.registrationUrl || `${window.location.origin}${data.registrationPath}`,
+      })
+    } catch (error) {
+      setInviteError(error.message)
+    } finally {
+      setGeneratingInvite(false)
+    }
+  }
+
+  const abrirGenerador = () => {
+    setShowInvite(true)
+    setInvite(null)
+    generarEnlace()
+  }
+
+  const copiarEnlace = async () => {
+    try {
+      await navigator.clipboard.writeText(invite.registrationUrl)
+      setCopied(true)
+    } catch {
+      setInviteError('No se pudo copiar automáticamente. Mantené presionado el enlace para copiarlo.')
+    }
+  }
+
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Lista de Pacientes</h1>
           <p className="text-gray-400 text-sm mt-0.5">
@@ -125,13 +182,22 @@ export default function Pacientes() {
             }
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-[#B00000] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#900000] transition-all shadow-sm"
-        >
-          <IconPlus className="w-4 h-4" />
-          Nuevo Paciente
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={abrirGenerador}
+            className="flex items-center gap-2 border border-red-100 text-[#B00000] bg-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-red-50 transition-all shadow-sm"
+          >
+            <span aria-hidden="true">↗</span>
+            Enviar formulario
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 bg-[#B00000] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#900000] transition-all shadow-sm"
+          >
+            <IconPlus className="w-4 h-4" />
+            Nuevo Paciente
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -264,6 +330,57 @@ export default function Pacientes() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showInvite && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#B00000] mb-1">Registro del paciente</p>
+                <h2 className="font-bold text-gray-800 text-lg">Enlace temporal</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvite(false)}
+                className="text-gray-400 hover:text-gray-700 text-xl leading-none"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+
+            {generatingInvite ? (
+              <div className="py-10 text-center text-sm text-gray-400">Generando enlace seguro…</div>
+            ) : invite ? (
+              <div>
+                <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 mb-4">
+                  <p className="text-xs text-gray-500 mb-2">Copiá este enlace y envialo por WhatsApp:</p>
+                  <p className="text-sm text-gray-800 font-medium break-all select-all">{invite.registrationUrl}</p>
+                </div>
+                <div className="flex items-center justify-between gap-3 mb-5 text-xs">
+                  <span className="text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full">Vence en 30 minutos</span>
+                  <span className="text-gray-400">
+                    {new Date(invite.expiresAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                {inviteError && <p className="text-xs text-red-500 mb-3" role="alert">{inviteError}</p>}
+                <button
+                  type="button"
+                  onClick={copiarEnlace}
+                  className="w-full bg-[#B00000] text-white rounded-xl py-3 text-sm font-medium hover:bg-[#900000] transition"
+                >
+                  {copied ? 'Enlace copiado ✓' : 'Copiar enlace'}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-red-600 mb-4" role="alert">{inviteError || 'No se pudo generar el enlace.'}</p>
+                <button type="button" onClick={generarEnlace} className="w-full border border-gray-200 rounded-xl py-2.5 text-sm">Intentar nuevamente</button>
+              </div>
+            )}
           </div>
         </div>
       )}

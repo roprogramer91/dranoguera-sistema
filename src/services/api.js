@@ -6,8 +6,13 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, options)
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Error del servidor')
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const error = new Error(data.error || 'Error del servidor')
+    error.status = res.status
+    error.data = data
+    throw error
+  }
   return data
 }
 
@@ -67,6 +72,33 @@ export const createNota = (patientId, content) =>
 // ─── Stats (requieren auth) ───────────────────────────────────────────────────
 
 export const getStats = () => authRequest('/stats')
+
+// Registro público mediante enlace temporal
+
+export const getRegistrationStatus = (token) =>
+  request(`/public/registration/${encodeURIComponent(token)}`)
+
+export const submitRegistration = (token, data) =>
+  request(`/public/registration/${encodeURIComponent(token)}`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(data),
+  })
+
+// Invitaciones y revisiones (requieren auth)
+
+export const createRegistrationInvite = () =>
+  authRequest('/registration-invites', { method: 'POST' })
+
+export const getRegistrationInvites = () => authRequest('/registration-invites')
+
+export const revokeRegistrationInvite = (id) =>
+  authRequest(`/registration-invites/${id}/revoke`, { method: 'PATCH' })
+
+export const getRegistrationReviews = () => authRequest('/registration-reviews')
+
+export const reviewRegistration = (patientId) =>
+  authRequest(`/registration-reviews/${patientId}/review`, { method: 'PATCH' })
 
 // ─── Mappers API → shape del dashboard ───────────────────────────────────────
 

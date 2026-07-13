@@ -8,6 +8,7 @@ import Pacientes from './pages/doctor/Pacientes'
 import PacienteDetalle from './pages/doctor/PacienteDetalle'
 import Agenda from './pages/doctor/Agenda'
 import Unauthorized from './pages/Unauthorized'
+import RegistroPaciente from './pages/RegistroPaciente'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/no-autorizado" element={<Unauthorized />} />
+          <Route path="/registro/:token" element={<RegistroPaciente />} />
           <Route
             path="/dashboard"
             element={
