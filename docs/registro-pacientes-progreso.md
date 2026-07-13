@@ -6,11 +6,11 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 ## Estado general
 
-**Etapa actual:** primera implementación desplegada en Railway development; prueba integral autenticada pendiente.
+**Etapa actual:** solicitudes pendientes separadas de pacientes activos, con revisión y aprobación desplegadas en Railway development.
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** ingresar al dashboard de development, generar un enlace con una sesión Firebase válida y completar el formulario con datos ficticios para verificar la bandeja pendiente.
+**Próximo paso recomendado:** revisar la solicitud ficticia de Roger, aprobarla y probar la creación de turno con el paciente precargado.
 
 ## Checklist
 
@@ -92,17 +92,17 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [x] Agregar métodos de invitaciones y revisión a `src/services/api.js`.
 - [x] Agregar botón Generar enlace de registro.
 - [ ] Crear interfaz para copiar, consultar y revocar enlaces.
-- [ ] Crear contador persistente de registros pendientes.
-- [ ] Crear listado o bandeja de pendientes.
-- [ ] Crear pantalla o modal de revisión.
-- [ ] Permitir editar, aprobar y resolver duplicados.
-- [ ] Abrir Agenda desde Crear turno con el paciente precargado.
+- [x] Crear contador persistente de registros pendientes.
+- [x] Crear listado o bandeja de pendientes.
+- [x] Crear pantalla o modal de revisión.
+- [x] Permitir editar y aprobar registros; la resolución explícita de duplicados continúa pendiente.
+- [x] Abrir Agenda desde Crear turno con el paciente precargado.
 - [ ] Adaptar el alta manual a los nuevos campos sin eliminarla.
 
 ### Notificaciones
 
-- [ ] Implementar aviso interno de nuevos registros.
-- [ ] Definir el mecanismo de actualización del contador.
+- [x] Implementar aviso interno de nuevos registros.
+- [x] Actualizar el contador al recuperar foco, después de aprobar y cada 30 segundos.
 - [ ] Decidir si las notificaciones push forman parte de la primera entrega.
 - [ ] Configurar Firebase Cloud Messaging si se aprueban notificaciones push.
 - [ ] Abrir la ficha correcta al tocar la notificación.
@@ -167,6 +167,12 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - El dashboard fue publicado mediante el commit `39ee30d` y desplegado correctamente en Railway development.
 - Se verificó que la ruta pública desplegada responde HTTP 200, que un token inválido devuelve `unavailable` y que el generador administrativo sin token Firebase responde 401.
 - La prueba automática con escritura ficticia no se ejecutó porque habría requerido cambiar temporalmente `DATABASE_URL` al proxy público; se preservó la conexión privada y la prueba queda para el flujo autenticado real.
+- La prueba autenticada creó correctamente a Roger, consumió el enlace y permitió detectar que el primer modelo lo mostraba prematuramente como paciente activo.
+- Se creó `RegistrationSubmission` para almacenar solicitudes sin incorporarlas a la lista de pacientes hasta que Adriana las apruebe.
+- La migración privada convirtió el registro ficticio de Roger en solicitud pendiente y lo retiró de la lista activa sin perder sus datos.
+- El dashboard incorpora contador, bandeja, revisión editable, aprobación y acceso a Agenda con el paciente precargado.
+- Los commits correctivos `67fe306` (backend) y `fc8fbad` (dashboard) quedaron desplegados en development con estado `SUCCESS`.
+- `backend/railway.json` ejecuta `prisma migrate deploy` antes de cada despliegue dentro de la red privada de Railway.
 
 ## Bloqueos o dependencias actuales
 
