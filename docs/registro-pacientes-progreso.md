@@ -10,7 +10,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** revisar la solicitud ficticia de Roger, aprobarla y probar la creación de turno con el paciente precargado.
+**Próximo paso recomendado:** implementar rechazo de solicitudes y resolución explícita de posibles pacientes duplicados.
 
 ## Checklist
 
@@ -114,7 +114,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [ ] Probar validaciones y errores de red.
 - [ ] Probar doble envío y concurrencia.
 - [ ] Probar detección y resolución de duplicados.
-- [ ] Probar revisión y creación de turno.
+- [x] Probar revisión, aprobación y creación de turno con el paciente precargado.
 - [ ] Probar que el alta manual siga funcionando.
 - [ ] Ejecutar lint y build del frontend.
 - [ ] Ejecutar pruebas y migraciones del backend.
@@ -173,6 +173,8 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - El dashboard incorpora contador, bandeja, revisión editable, aprobación y acceso a Agenda con el paciente precargado.
 - Los commits correctivos `67fe306` (backend) y `fc8fbad` (dashboard) quedaron desplegados en development con estado `SUCCESS`.
 - `backend/railway.json` ejecuta `prisma migrate deploy` antes de cada despliegue dentro de la red privada de Railway.
+- Se completó satisfactoriamente la prueba integral de Roger: revisión, aprobación, alta activa y apertura de Agenda con el paciente precargado.
+- La API confirmó que Roger quedó `active=true`, `reviewStatus=reviewed` y `registrationSource=self_service` después de la aprobación.
 
 ## Bloqueos o dependencias actuales
 
