@@ -240,7 +240,17 @@ export default function Pacientes() {
       await refrescarDespuesDeRevision()
       if (crearTurno) navigate(`/dashboard/agenda?nuevo=1&patientId=${patient.id}`)
     } catch (error) {
-      setReviewErrors(error.data?.errors || { submit: error.message })
+      if (error.data?.code === 'DUPLICATE_PATIENT' && error.data.duplicate) {
+        setSelectedReview(current => ({
+          ...current,
+          status: 'duplicate_review',
+          possibleDuplicatePatientId: error.data.duplicate.id,
+          possibleDuplicate: error.data.duplicate,
+        }))
+        setReviewErrors({ submit: 'Elegí cómo resolver la coincidencia de DNI.' })
+      } else {
+        setReviewErrors(error.data?.errors || { submit: error.message })
+      }
     } finally {
       setReviewSaving(false)
     }
