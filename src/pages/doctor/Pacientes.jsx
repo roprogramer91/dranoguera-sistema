@@ -5,9 +5,11 @@ import {
   createPaciente,
   createRegistrationInvite,
   getRegistrationReviews,
+  getRegistrationInvites,
   linkRegistrationToPatient,
   rejectRegistration,
   reviewRegistration,
+  revokeRegistrationInvite,
   mapPaciente,
   pacienteFormToAPI,
 } from '../../services/api'
@@ -71,6 +73,25 @@ function getAvatarColor(nombre) {
   return AVATAR_COLORS[nombre.charCodeAt(0) % AVATAR_COLORS.length]
 }
 
+function inviteStatus(invite, now) {
+  if (invite.status === 'pending' && new Date(invite.expiresAt).getTime() <= now) return 'expired'
+  return invite.status
+}
+
+function remainingTime(expiresAt, now) {
+  const remaining = Math.max(0, new Date(expiresAt).getTime() - now)
+  const minutes = Math.floor(remaining / 60000)
+  const seconds = Math.floor((remaining % 60000) / 1000)
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+const INVITE_STATUS = {
+  pending: { label: 'Pendiente', classes: 'bg-amber-50 text-amber-700' },
+  used: { label: 'Utilizado', classes: 'bg-green-50 text-green-700' },
+  expired: { label: 'Vencido', classes: 'bg-gray-100 text-gray-500' },
+  revoked: { label: 'Revocado', classes: 'bg-red-50 text-red-600' },
+}
+
 export default function Pacientes() {
   const [pacientes, setPacientes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +105,9 @@ export default function Pacientes() {
   const [generatingInvite, setGeneratingInvite] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [inviteHistory, setInviteHistory] = useState([])
+  const [loadingInvites, setLoadingInvites] = useState(false)
+  const [inviteNow, setInviteNow] = useState(Date.now())
   const [pendingReviews, setPendingReviews] = useState([])
   const [selectedReview, setSelectedReview] = useState(null)
   const [reviewForm, setReviewForm] = useState(REVIEW_FORM_INICIAL)
@@ -173,12 +197,14 @@ export default function Pacientes() {
     setGeneratingInvite(true)
     setInviteError('')
     setCopied(false)
+    setInviteNow(Date.now())
     try {
       const data = await createRegistrationInvite()
       setInvite({
         ...data,
         registrationUrl: data.registrationUrl || `${window.location.origin}${data.registrationPath}`,
       })
+      getRegistrationInvites().then(setInviteHistory).catch(() => {})
     } catch (error) {
       setInviteError(error.message)
     } finally {
@@ -186,10 +212,21 @@ export default function Pacientes() {
     }
   }
 
+  const cargarHistorial = () => {
+    setLoadingInvites(true)
+    return getRegistrationInvites()
+      .then(setInviteHistory)
+      .catch(error => setInviteError(error.message))
+      .finally(() => setLoadingInvites(false))
+  }
+
   const abrirGenerador = () => {
     setShowInvite(true)
     setInvite(null)
-    generarEnlace()
+    setInviteError('')
+    setCopied(false)
+    setInviteNow(Date.now())
+    cargarHistorial()
   }
 
   const copiarEnlace = async () => {
@@ -200,6 +237,25 @@ export default function Pacientes() {
       setInviteError('No se pudo copiar automáticamente. Mantené presionado el enlace para copiarlo.')
     }
   }
+
+  const revocarEnlace = async (inviteId) => {
+    if (!window.confirm('¿Revocar este enlace? El paciente ya no podrá utilizarlo.')) return
+    try {
+      const revoked = await revokeRegistrationInvite(inviteId)
+      setInviteHistory(current => current.map(item => (
+        item.id === inviteId ? { ...item, ...revoked } : item
+      )))
+      if (invite?.id === inviteId) setInvite(current => ({ ...current, ...revoked }))
+    } catch (error) {
+      setInviteError(error.message)
+    }
+  }
+
+  useEffect(() => {
+    if (!showInvite) return undefined
+    const timer = window.setInterval(() => setInviteNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [showInvite])
 
   const abrirRevision = (submission) => {
     setSelectedReview(submission)
@@ -589,11 +645,11 @@ export default function Pacientes() {
 
       {showInvite && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#B00000] mb-1">Registro del paciente</p>
-                <h2 className="font-bold text-gray-800 text-lg">Enlace temporal</h2>
+                <h2 className="font-bold text-gray-800 text-lg">Enlaces temporales</h2>
               </div>
               <button
                 type="button"
@@ -605,37 +661,113 @@ export default function Pacientes() {
               </button>
             </div>
 
+            {inviteError && <p className="text-sm text-red-600 mb-4 rounded-xl bg-red-50 px-4 py-3" role="alert">{inviteError}</p>}
+
             {generatingInvite ? (
-              <div className="py-10 text-center text-sm text-gray-400">Generando enlace seguro…</div>
+              <div className="py-8 text-center text-sm text-gray-400">Generando enlace seguro…</div>
             ) : invite ? (
-              <div>
-                <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 mb-4">
-                  <p className="text-xs text-gray-500 mb-2">Copiá este enlace y envialo por WhatsApp:</p>
-                  <p className="text-sm text-gray-800 font-medium break-all select-all">{invite.registrationUrl}</p>
-                </div>
-                <div className="flex items-center justify-between gap-3 mb-5 text-xs">
-                  <span className="text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full">Vence en 30 minutos</span>
-                  <span className="text-gray-400">
-                    {new Date(invite.expiresAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+              <div className="rounded-2xl border border-red-100 bg-red-50/40 p-4 mb-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-sm font-semibold text-gray-800">Enlace recién generado</p>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${INVITE_STATUS[inviteStatus(invite, inviteNow)]?.classes}`}>
+                    {INVITE_STATUS[inviteStatus(invite, inviteNow)]?.label}
                   </span>
                 </div>
-                {inviteError && <p className="text-xs text-red-500 mb-3" role="alert">{inviteError}</p>}
-                <button
-                  type="button"
-                  onClick={copiarEnlace}
-                  className="w-full bg-[#B00000] text-white rounded-xl py-3 text-sm font-medium hover:bg-[#900000] transition"
-                >
-                  {copied ? 'Enlace copiado ✓' : 'Copiar enlace'}
-                </button>
+                <p className="text-xs text-gray-500 mb-2">Copiá este enlace y envialo por WhatsApp. Por seguridad no volverá a mostrarse al cerrar.</p>
+                <p className="text-sm text-gray-800 font-medium break-all select-all rounded-xl bg-white border border-red-100 p-3">{invite.registrationUrl}</p>
+                <div className="flex items-center justify-between gap-3 my-3 text-xs">
+                  <span className="text-amber-700">Tiempo restante: <strong>{remainingTime(invite.expiresAt, inviteNow)}</strong></span>
+                  <span className="text-gray-400">Vence {new Date(invite.expiresAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button type="button" onClick={copiarEnlace} disabled={inviteStatus(invite, inviteNow) !== 'pending'} className="flex-1 bg-[#B00000] text-white rounded-xl py-2.5 text-sm font-medium hover:bg-[#900000] disabled:opacity-40">
+                    {copied ? 'Enlace copiado ✓' : 'Copiar enlace'}
+                  </button>
+                  {inviteStatus(invite, inviteNow) === 'pending' && (
+                    <button type="button" onClick={() => revocarEnlace(invite.id)} className="border border-red-200 text-red-600 rounded-xl px-4 py-2.5 text-sm hover:bg-red-50">Revocar</button>
+                  )}
+                </div>
               </div>
             ) : (
-              <div>
-                <p className="text-sm text-red-600 mb-4" role="alert">{inviteError || 'No se pudo generar el enlace.'}</p>
-                <button type="button" onClick={generarEnlace} className="w-full border border-gray-200 rounded-xl py-2.5 text-sm">Intentar nuevamente</button>
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-6 text-center mb-5">
+                <p className="text-sm font-medium text-gray-700">Generá un enlace válido por 30 minutos</p>
+                <p className="text-xs text-gray-400 mt-1 mb-4">No necesitás ingresar previamente ningún dato del paciente.</p>
+                <button type="button" onClick={generarEnlace} className="bg-[#B00000] text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-[#900000]">Generar nuevo enlace</button>
               </div>
             )}
+
+            {invite && !generatingInvite && (
+              <button type="button" onClick={generarEnlace} className="w-full mb-5 border border-gray-200 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50">Generar otro enlace</button>
+            )}
+
+            <div className="border-t border-gray-100 pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800">Historial reciente</h3>
+                  <p className="text-xs text-gray-400">Los enlaces usados o cerrados no pueden copiarse nuevamente.</p>
+                </div>
+                <button type="button" onClick={cargarHistorial} className="text-xs text-[#B00000] hover:underline">Actualizar</button>
+              </div>
+              {loadingInvites ? (
+                <p className="text-sm text-gray-300 text-center py-6">Cargando enlaces…</p>
+              ) : inviteHistory.length === 0 ? (
+                <p className="text-sm text-gray-300 text-center py-6">Todavía no hay enlaces generados.</p>
+              ) : (
+                <div className="space-y-2">
+                  {inviteHistory.slice(0, 10).map(item => (
+                    <InviteHistoryItem key={item.id} invite={item} now={inviteNow} onRevoke={revocarEnlace} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function InviteHistoryItem({ invite, now, onRevoke }) {
+  const status = inviteStatus(invite, now)
+  const config = INVITE_STATUS[status] || INVITE_STATUS.expired
+  const dateOptions = { dateStyle: 'short', timeStyle: 'short' }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-medium text-gray-700">Enlace #{invite.id}</span>
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${config.classes}`}>
+            {config.label}
+          </span>
+        </div>
+        <p className="text-[11px] text-gray-400">
+          Creado {new Date(invite.createdAt).toLocaleString('es-AR', dateOptions)}
+        </p>
+        {status === 'pending' && (
+          <p className="text-[11px] text-amber-700 mt-0.5">
+            Vence en {remainingTime(invite.expiresAt, now)}
+          </p>
+        )}
+        {status === 'used' && invite.usedAt && (
+          <p className="text-[11px] text-green-700 mt-0.5">
+            Utilizado {new Date(invite.usedAt).toLocaleString('es-AR', dateOptions)}
+          </p>
+        )}
+        {status === 'revoked' && invite.revokedAt && (
+          <p className="text-[11px] text-red-600 mt-0.5">
+            Revocado {new Date(invite.revokedAt).toLocaleString('es-AR', dateOptions)}
+          </p>
+        )}
+      </div>
+      {status === 'pending' && (
+        <button
+          type="button"
+          onClick={() => onRevoke(invite.id)}
+          className="flex-shrink-0 text-xs text-red-600 border border-red-100 rounded-lg px-3 py-1.5 hover:bg-red-50"
+        >
+          Revocar
+        </button>
       )}
     </div>
   )

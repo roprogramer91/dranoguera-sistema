@@ -6,11 +6,11 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 ## Estado general
 
-**Etapa actual:** solicitudes pendientes separadas de pacientes activos, con revisión y aprobación desplegadas en Railway development.
+**Etapa actual:** flujo completo de registro, revisión y gestión de enlaces implementado en el ambiente Railway development.
 
-**Última actualización:** 13 de julio de 2026.
+**Última actualización:** 14 de julio de 2026.
 
-**Próximo paso recomendado:** completar la gestión del historial de enlaces con estados, vencimiento visible y revocación desde el dashboard.
+**Próximo paso recomendado:** probar de punta a punta los estados pendiente, vencido, usado y revocado, y revisar la experiencia en un teléfono.
 
 ## Checklist
 
@@ -91,7 +91,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 - [x] Agregar métodos de invitaciones y revisión a `src/services/api.js`.
 - [x] Agregar botón Generar enlace de registro.
-- [ ] Crear interfaz para copiar, consultar y revocar enlaces.
+- [x] Crear interfaz para copiar, consultar y revocar enlaces.
 - [x] Crear contador persistente de registros pendientes.
 - [x] Crear listado o bandeja de pendientes.
 - [x] Crear pantalla o modal de revisión.
@@ -117,7 +117,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [x] Probar detección y resolución de duplicados.
 - [x] Probar revisión, aprobación y creación de turno con el paciente precargado.
 - [ ] Probar que el alta manual siga funcionando.
-- [ ] Ejecutar lint y build del frontend.
+- [x] Ejecutar lint y build del frontend.
 - [ ] Ejecutar pruebas y migraciones del backend.
 - [ ] Realizar prueba integral con Adriana.
 - [ ] Publicar y verificar en producción.
@@ -180,6 +180,8 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - Las coincidencias de DNI muestran el paciente existente y permiten vincularlo, vincularlo y crear turno, o confirmar que se trata de otra persona.
 - Los commits `e1f4214` (backend) y `79460ce` (dashboard) quedaron desplegados en development con estado `SUCCESS`.
 - Se corrigió y validó la visualización inmediata de las acciones para DNI duplicado; los commits `bdf18bb` y `7bc8a98` quedaron desplegados correctamente.
+- Se incorporó una administración de enlaces temporales con generación explícita, cuenta regresiva, historial reciente, estados y revocación de invitaciones pendientes.
+- El build completo y el lint específico de `Pacientes.jsx` y `api.js` finalizaron correctamente el 14 de julio de 2026.
 
 ## Bloqueos o dependencias actuales
 
