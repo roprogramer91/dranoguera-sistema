@@ -10,7 +10,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** implementar rechazo de solicitudes y resolución explícita de posibles pacientes duplicados.
+**Próximo paso recomendado:** probar el rechazo de una solicitud y las dos resoluciones de DNI duplicado en development.
 
 ## Checklist
 
@@ -95,7 +95,8 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [x] Crear contador persistente de registros pendientes.
 - [x] Crear listado o bandeja de pendientes.
 - [x] Crear pantalla o modal de revisión.
-- [x] Permitir editar y aprobar registros; la resolución explícita de duplicados continúa pendiente.
+- [x] Permitir editar, aprobar y rechazar solicitudes.
+- [x] Resolver duplicados vinculando al paciente existente o confirmando la creación de uno nuevo.
 - [x] Abrir Agenda desde Crear turno con el paciente precargado.
 - [ ] Adaptar el alta manual a los nuevos campos sin eliminarla.
 
@@ -175,6 +176,9 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - `backend/railway.json` ejecuta `prisma migrate deploy` antes de cada despliegue dentro de la red privada de Railway.
 - Se completó satisfactoriamente la prueba integral de Roger: revisión, aprobación, alta activa y apertura de Agenda con el paciente precargado.
 - La API confirmó que Roger quedó `active=true`, `reviewStatus=reviewed` y `registrationSource=self_service` después de la aprobación.
+- Se implementó el rechazo de solicitudes sin crear pacientes activos.
+- Las coincidencias de DNI muestran el paciente existente y permiten vincularlo, vincularlo y crear turno, o confirmar que se trata de otra persona.
+- Los commits `e1f4214` (backend) y `79460ce` (dashboard) quedaron desplegados en development con estado `SUCCESS`.
 
 ## Bloqueos o dependencias actuales
 
