@@ -10,7 +10,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 
 **Última actualización:** 13 de julio de 2026.
 
-**Próximo paso recomendado:** probar el rechazo de una solicitud y las dos resoluciones de DNI duplicado en development.
+**Próximo paso recomendado:** completar la gestión del historial de enlaces con estados, vencimiento visible y revocación desde el dashboard.
 
 ## Checklist
 
@@ -114,7 +114,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - [ ] Probar flujos Particular y Obra social.
 - [ ] Probar validaciones y errores de red.
 - [ ] Probar doble envío y concurrencia.
-- [ ] Probar detección y resolución de duplicados.
+- [x] Probar detección y resolución de duplicados.
 - [x] Probar revisión, aprobación y creación de turno con el paciente precargado.
 - [ ] Probar que el alta manual siga funcionando.
 - [ ] Ejecutar lint y build del frontend.
@@ -179,6 +179,7 @@ Documento de contexto y roadmap: [registro-pacientes-roadmap.md](./registro-paci
 - Se implementó el rechazo de solicitudes sin crear pacientes activos.
 - Las coincidencias de DNI muestran el paciente existente y permiten vincularlo, vincularlo y crear turno, o confirmar que se trata de otra persona.
 - Los commits `e1f4214` (backend) y `79460ce` (dashboard) quedaron desplegados en development con estado `SUCCESS`.
+- Se corrigió y validó la visualización inmediata de las acciones para DNI duplicado; los commits `bdf18bb` y `7bc8a98` quedaron desplegados correctamente.
 
 ## Bloqueos o dependencias actuales
 
