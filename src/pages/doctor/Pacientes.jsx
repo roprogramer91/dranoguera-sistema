@@ -5,6 +5,8 @@ import {
   createPaciente,
   createRegistrationInvite,
   getRegistrationReviews,
+  linkRegistrationToPatient,
+  rejectRegistration,
   reviewRegistration,
   mapPaciente,
   pacienteFormToAPI,
@@ -221,17 +223,54 @@ export default function Pacientes() {
     if (reviewErrors[key]) setReviewErrors(current => ({ ...current, [key]: undefined }))
   }
 
-  const aprobarRegistro = async (crearTurno = false) => {
+  const refrescarDespuesDeRevision = async () => {
+    setSelectedReview(null)
+    await Promise.all([fetchPacientes(), fetchPendingReviews()])
+    window.dispatchEvent(new Event('registration-reviews-updated'))
+  }
+
+  const aprobarRegistro = async (crearTurno = false, allowDuplicate = false) => {
     setReviewSaving(true)
     setReviewErrors({})
     try {
-      const patient = await reviewRegistration(selectedReview.id, reviewForm)
-      setSelectedReview(null)
-      await Promise.all([fetchPacientes(), fetchPendingReviews()])
-      window.dispatchEvent(new Event('registration-reviews-updated'))
+      const patient = await reviewRegistration(selectedReview.id, {
+        ...reviewForm,
+        allowDuplicate,
+      })
+      await refrescarDespuesDeRevision()
       if (crearTurno) navigate(`/dashboard/agenda?nuevo=1&patientId=${patient.id}`)
     } catch (error) {
       setReviewErrors(error.data?.errors || { submit: error.message })
+    } finally {
+      setReviewSaving(false)
+    }
+  }
+
+  const rechazarRegistro = async () => {
+    if (!window.confirm('¿Descartar esta solicitud? No se creará ningún paciente.')) return
+    setReviewSaving(true)
+    setReviewErrors({})
+    try {
+      await rejectRegistration(selectedReview.id)
+      await refrescarDespuesDeRevision()
+    } catch (error) {
+      setReviewErrors({ submit: error.message })
+    } finally {
+      setReviewSaving(false)
+    }
+  }
+
+  const vincularExistente = async (crearTurno = false) => {
+    const existing = selectedReview.possibleDuplicate
+    if (!existing) return
+    setReviewSaving(true)
+    setReviewErrors({})
+    try {
+      const patient = await linkRegistrationToPatient(selectedReview.id, existing.id)
+      await refrescarDespuesDeRevision()
+      if (crearTurno) navigate(`/dashboard/agenda?nuevo=1&patientId=${patient.id}`)
+    } catch (error) {
+      setReviewErrors({ submit: error.message })
     } finally {
       setReviewSaving(false)
     }
@@ -354,8 +393,18 @@ export default function Pacientes() {
             </div>
 
             {selectedReview.status === 'duplicate_review' && (
-              <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
-                El DNI coincide con un paciente existente. Revisalo antes de aprobar para evitar duplicados.
+              <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+                <p className="font-semibold">Posible paciente duplicado</p>
+                <p className="mt-1 text-orange-800/80">El DNI coincide con un paciente que ya está activo.</p>
+                {selectedReview.possibleDuplicate && (
+                  <div className="mt-3 rounded-lg bg-white/80 px-3 py-2">
+                    <strong className="block">{selectedReview.possibleDuplicate.name}</strong>
+                    <span className="text-xs text-gray-500">
+                      DNI {selectedReview.possibleDuplicate.dni}
+                      {selectedReview.possibleDuplicate.phone ? ` · Tel. ${selectedReview.possibleDuplicate.phone}` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -401,15 +450,36 @@ export default function Pacientes() {
 
             {reviewErrors.submit && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">{reviewErrors.submit}</p>}
 
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
-              <button type="button" onClick={() => setSelectedReview(null)} className="sm:w-1/3 border border-gray-200 text-gray-500 rounded-xl py-2.5 text-sm hover:bg-gray-50">Cancelar</button>
-              <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(false)} className="sm:flex-1 border border-red-200 text-[#B00000] rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 disabled:opacity-50">
-                {reviewSaving ? 'Guardando…' : 'Aprobar y guardar'}
-              </button>
-              <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(true)} className="sm:flex-1 bg-[#B00000] text-white rounded-xl py-2.5 text-sm font-medium hover:bg-[#900000] disabled:opacity-50">
-                {reviewSaving ? 'Guardando…' : 'Aprobar y crear turno'}
-              </button>
-            </div>
+            {selectedReview.status === 'duplicate_review' && selectedReview.possibleDuplicate ? (
+              <div className="mt-6 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Elegí cómo resolverlo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button type="button" disabled={reviewSaving} onClick={() => vincularExistente(false)} className="border border-green-200 bg-green-50 text-green-700 rounded-xl py-2.5 px-3 text-sm font-medium hover:bg-green-100 disabled:opacity-50">
+                    Vincular al paciente existente
+                  </button>
+                  <button type="button" disabled={reviewSaving} onClick={() => vincularExistente(true)} className="bg-green-600 text-white rounded-xl py-2.5 px-3 text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                    Vincular y crear turno
+                  </button>
+                  <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(false, true)} className="border border-orange-200 text-orange-700 rounded-xl py-2.5 px-3 text-sm font-medium hover:bg-orange-50 disabled:opacity-50">
+                    Es otra persona: crear nueva
+                  </button>
+                  <button type="button" disabled={reviewSaving} onClick={rechazarRegistro} className="border border-gray-200 text-gray-500 rounded-xl py-2.5 px-3 text-sm hover:bg-gray-50 disabled:opacity-50">
+                    Descartar solicitud
+                  </button>
+                </div>
+                <button type="button" onClick={() => setSelectedReview(null)} className="w-full text-gray-400 rounded-xl py-2 text-sm hover:text-gray-600">Cerrar sin resolver</button>
+              </div>
+            ) : (
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap">
+                <button type="button" disabled={reviewSaving} onClick={rechazarRegistro} className="sm:w-auto border border-gray-200 text-gray-500 rounded-xl px-4 py-2.5 text-sm hover:bg-gray-50 disabled:opacity-50">Descartar</button>
+                <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(false)} className="sm:flex-1 border border-red-200 text-[#B00000] rounded-xl py-2.5 text-sm font-medium hover:bg-red-50 disabled:opacity-50">
+                  {reviewSaving ? 'Guardando…' : 'Aprobar y guardar'}
+                </button>
+                <button type="button" disabled={reviewSaving} onClick={() => aprobarRegistro(true)} className="sm:flex-1 bg-[#B00000] text-white rounded-xl py-2.5 text-sm font-medium hover:bg-[#900000] disabled:opacity-50">
+                  {reviewSaving ? 'Guardando…' : 'Aprobar y crear turno'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

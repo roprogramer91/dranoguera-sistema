@@ -103,6 +103,15 @@ export const reviewRegistration = (submissionId, data) =>
     body: JSON.stringify(data),
   })
 
+export const rejectRegistration = (submissionId) =>
+  authRequest(`/registration-reviews/${submissionId}/reject`, { method: 'PATCH' })
+
+export const linkRegistrationToPatient = (submissionId, patientId) =>
+  authRequest(`/registration-reviews/${submissionId}/link-existing`, {
+    method: 'PATCH',
+    body: JSON.stringify({ patientId }),
+  })
+
 // ─── Mappers API → shape del dashboard ───────────────────────────────────────
 
 export function mapPaciente(p) {
